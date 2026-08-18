@@ -328,6 +328,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
     String? selectedImagePath;
     Uint8List? selectedImageBytes;
     int? selectedParentId;
+    String selectedStatus = 'active';
     List<Category> parentCategories = [];
 
     showDialog(
@@ -403,6 +404,32 @@ class _CategoriesPageState extends State<CategoriesPage> {
                             });
                           },
                         );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    // Status Dropdown
+                    DropdownButtonFormField<String>(
+                      value: selectedStatus,
+                      decoration: InputDecoration(
+                        labelText: 'Status',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      items: const [
+                        DropdownMenuItem<String>(
+                          value: 'active',
+                          child: Text('Active'),
+                        ),
+                        DropdownMenuItem<String>(
+                          value: 'inactive',
+                          child: Text('Inactive'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        setState(() {
+                          selectedStatus = value ?? 'active';
+                        });
                       },
                     ),
                     const SizedBox(height: 16),
@@ -615,6 +642,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
                     name: nameController.text.trim(),
                     parentId: selectedParentId, // Use selected parent ID (null if no parent selected)
                     imageKey: imageKey, // Use the uploaded image key
+                    status: selectedStatus,
                   );
 
                   final success = await categoriesViewModel.createCategory(request);

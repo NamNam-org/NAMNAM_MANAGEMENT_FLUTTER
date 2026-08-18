@@ -21,7 +21,7 @@ class Category {
     return Category(
       type: json['type'],
       status: json['status'],
-      imageUrl: json['imageUrl'],
+      imageUrl: json['imageUrl'] ?? json['imageKey'],
       parentId: json['parentId'],
       createdAt: json['createdAt'] ?? '',
       categoryId: json['categoryId'] ?? 0,

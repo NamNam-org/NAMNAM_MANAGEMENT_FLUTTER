@@ -44,7 +44,13 @@ class CategoriesServiceImpl implements CategoriesService {
           
           // Parse the data as a List
           if (response.data is List) {
-            final List<Category> categories = (response.data as List)
+            final List rawList = response.data as List;
+            // The API sometimes double-wraps results in an extra array
+            // level (e.g. [[{...}, {...}]] instead of [{...}, {...}]).
+            final List flatList = rawList.isNotEmpty && rawList.first is List
+                ? rawList.expand((e) => e as List).toList()
+                : rawList;
+            final List<Category> categories = flatList
                 .map((item) => Category.fromJson(item))
                 .toList();
             
@@ -130,11 +136,21 @@ class CategoriesServiceImpl implements CategoriesService {
             response.message,
           );
         } else {
-          print('CategoriesServiceImpl: Response data is null');
+          // The API returns {success: true} with no "data" payload on
+          // creation, so a null body here still means success.
+          print('CategoriesServiceImpl: Category created successfully (no data payload returned)');
+          final category = Category(
+            createdAt: DateTime.now().toIso8601String(),
+            categoryId: 0,
+            categoryName: request.name,
+            parentId: request.parentId,
+            imageUrl: request.imageKey,
+            status: request.status,
+          );
           return ApiResponse(
-            Status.ERROR,
-            null,
-            'No category data received',
+            Status.COMPLETED,
+            category,
+            response.message,
           );
         }
       } else {
