@@ -346,11 +346,14 @@ class _CategoriesPageState extends State<CategoriesPage> {
               Text('Add New Category'),
             ],
           ),
-          content: StatefulBuilder(
+          content: SizedBox(
+            width: 400,
+            child: StatefulBuilder(
             builder: (context, setState) {
               return Form(
                 key: formKey,
-                child: Column(
+                child: SingleChildScrollView(
+                  child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     TextFormField(
@@ -600,8 +603,10 @@ class _CategoriesPageState extends State<CategoriesPage> {
                     ],
                   ],
                 ),
+                ),
               );
             },
+          ),
           ),
           actions: [
             TextButton(
