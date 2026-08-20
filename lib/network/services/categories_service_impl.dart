@@ -5,6 +5,7 @@ import 'package:namnam/network/ApiEndPoints.dart';
 import 'package:namnam/network/NetworkApiService.dart';
 import 'package:namnam/network/services/categories_service.dart';
 import 'package:namnam/model/request/create_category_request.dart';
+import 'package:namnam/model/request/edit_category_request.dart';
 import 'package:namnam/core/Utility/Preferences.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -177,6 +178,136 @@ class CategoriesServiceImpl implements CategoriesService {
         Status.ERROR,
         null,
         'Failed to create category: $e',
+      );
+    }
+  }
+
+  @override
+  Future<ApiResponse<Category>> editCategory(EditCategoryRequest request) async {
+    print('CategoriesServiceImpl: Starting editCategory request...');
+    try {
+      // Get access token from preferences
+      final prefs = await SharedPreferences.getInstance();
+      final prefProvider = PrefProvider(prefs);
+      final accessToken = prefProvider.getAccessToken();
+
+      print('CategoriesServiceImpl: Access token retrieved: ${accessToken.isNotEmpty ? 'Present' : 'Not found'}');
+      print('CategoriesServiceImpl: Request data: ${request.toJson()}');
+
+      final response = await _networkApiService.patchResponse(
+        ApiEndPoints.updateCategory,
+        request.toJson(),
+        accessToken.isNotEmpty ? accessToken : null,
+      );
+
+      print('CategoriesServiceImpl: Network response - Status: ${response.status}, Message: ${response.message}');
+      print('CategoriesServiceImpl: Response data: ${response.data}');
+
+      if (response.status == Status.COMPLETED) {
+        if (response.data != null) {
+          print('CategoriesServiceImpl: Processing successful response...');
+          final category = Category.fromJson(response.data);
+          print('CategoriesServiceImpl: Category updated - ID: ${category.categoryId}');
+          return ApiResponse(
+            Status.COMPLETED,
+            category,
+            response.message,
+          );
+        } else {
+          // The API returns {success: true} with no "data" payload on
+          // update, so a null body here still means success.
+          print('CategoriesServiceImpl: Category updated successfully (no data payload returned)');
+          final category = Category(
+            createdAt: DateTime.now().toIso8601String(),
+            categoryId: request.id,
+            categoryName: request.name,
+            parentId: request.parentId,
+            imageUrl: request.imageKey,
+            status: request.status,
+          );
+          return ApiResponse(
+            Status.COMPLETED,
+            category,
+            response.message,
+          );
+        }
+      } else {
+        print('CategoriesServiceImpl: Response status is not COMPLETED');
+
+        // Check if it's an authentication error
+        if (response.message?.toLowerCase().contains('unauthorized') == true) {
+          return ApiResponse(
+            Status.ERROR,
+            null,
+            'Authentication failed. Please log in again.',
+          );
+        }
+
+        return ApiResponse(
+          Status.ERROR,
+          null,
+          response.message ?? 'Failed to update category',
+        );
+      }
+    } catch (e) {
+      print('CategoriesServiceImpl: Exception occurred: $e');
+      return ApiResponse(
+        Status.ERROR,
+        null,
+        'Failed to update category: $e',
+      );
+    }
+  }
+
+  @override
+  Future<ApiResponse<bool>> deleteCategory(int categoryId) async {
+    print('CategoriesServiceImpl: Starting deleteCategory request...');
+    try {
+      // Get access token from preferences
+      final prefs = await SharedPreferences.getInstance();
+      final prefProvider = PrefProvider(prefs);
+      final accessToken = prefProvider.getAccessToken();
+
+      print('CategoriesServiceImpl: Access token retrieved: ${accessToken.isNotEmpty ? 'Present' : 'Not found'}');
+
+      final response = await _networkApiService.deleteResponse(
+        ApiEndPoints.deleteCategory(categoryId),
+        accessToken.isNotEmpty ? accessToken : null,
+      );
+
+      print('CategoriesServiceImpl: Network response - Status: ${response.status}, Message: ${response.message}');
+
+      if (response.status == Status.COMPLETED) {
+        print('CategoriesServiceImpl: Category deleted successfully!');
+        return ApiResponse(
+          Status.COMPLETED,
+          true,
+          response.message,
+        );
+      } else {
+        print('CategoriesServiceImpl: Response status is not COMPLETED');
+
+        // Check if it's an authentication error
+        if (response.message?.toLowerCase().contains('unauthorized') == true) {
+          return ApiResponse(
+            Status.ERROR,
+            null,
+            'Authentication failed. Please log in again.',
+          );
+        }
+
+        return ApiResponse(
+          Status.ERROR,
+          null,
+          response.message ?? 'Failed to delete category',
+        );
+      }
+    } catch (e) {
+      print('CategoriesServiceImpl: Exception occurred: $e');
+      return ApiResponse(
+        Status.ERROR,
+        null,
+        'Failed to delete category: $e',
       );
     }
   }

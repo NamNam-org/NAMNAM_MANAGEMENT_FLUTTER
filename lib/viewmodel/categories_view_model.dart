@@ -4,6 +4,7 @@ import 'package:namnam/model/response/Status.dart';
 import 'package:namnam/network/services/categories_service.dart';
 import 'package:namnam/network/services/categories_service_impl.dart';
 import 'package:namnam/model/request/create_category_request.dart';
+import 'package:namnam/model/request/edit_category_request.dart';
 
 class CategoriesViewModel extends ChangeNotifier {
   final CategoriesService _categoriesService = CategoriesServiceImpl();
@@ -110,6 +111,70 @@ class CategoriesViewModel extends ChangeNotifier {
       print('CategoriesViewModel: Exception occurred: $e');
       _setStatus(Status.ERROR);
       _setMessage('Failed to create category: $e');
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  Future<bool> editCategory(EditCategoryRequest request) async {
+    print('CategoriesViewModel: Starting editCategory...');
+    _setLoading(true);
+    _setStatus(Status.LOADING);
+
+    try {
+      print('CategoriesViewModel: Updating category with data: ${request.toJson()}');
+
+      final response = await _categoriesService.editCategory(request);
+
+      print('CategoriesViewModel: Response received - Status: ${response.status}, Message: ${response.message}');
+      _setStatus(response.status!);
+      _setMessage(response.message ?? '');
+
+      if (response.status == Status.COMPLETED) {
+        print('CategoriesViewModel: Category updated successfully!');
+        _setLoading(false);
+        return true;
+      } else {
+        print('CategoriesViewModel: Failed to update category - Status: ${response.status}');
+        _setLoading(false);
+        return false;
+      }
+    } catch (e) {
+      print('CategoriesViewModel: Exception occurred: $e');
+      _setStatus(Status.ERROR);
+      _setMessage('Failed to update category: $e');
+      _setLoading(false);
+      return false;
+    }
+  }
+
+  Future<bool> deleteCategory(int categoryId) async {
+    print('CategoriesViewModel: Starting deleteCategory...');
+    _setLoading(true);
+    _setStatus(Status.LOADING);
+
+    try {
+      print('CategoriesViewModel: Deleting category with ID: $categoryId');
+
+      final response = await _categoriesService.deleteCategory(categoryId);
+
+      print('CategoriesViewModel: Response received - Status: ${response.status}, Message: ${response.message}');
+      _setStatus(response.status!);
+      _setMessage(response.message ?? '');
+
+      if (response.status == Status.COMPLETED) {
+        print('CategoriesViewModel: Category deleted successfully!');
+        _setLoading(false);
+        return true;
+      } else {
+        print('CategoriesViewModel: Failed to delete category - Status: ${response.status}');
+        _setLoading(false);
+        return false;
+      }
+    } catch (e) {
+      print('CategoriesViewModel: Exception occurred: $e');
+      _setStatus(Status.ERROR);
+      _setMessage('Failed to delete category: $e');
       _setLoading(false);
       return false;
     }

@@ -7,6 +7,15 @@ abstract class BaseApiService {
     Map<String, dynamic> json,
     String? token,
   );
+  Future<ApiResponse> patchResponse(
+    String url,
+    Map<String, dynamic> json,
+    String? token,
+  );
+  Future<ApiResponse> deleteResponse(
+    String url,
+    String? token,
+  );
   Future<ApiResponse> fetchData(
     String url,
     Map<String, dynamic> json,

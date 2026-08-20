@@ -64,6 +64,153 @@ class NetworkApiService extends BaseApiService {
       throw FetchDataException('Unexpected Error Occurred');
     }
   }
+  @override
+  Future<ApiResponse> patchResponse(
+      String url, Map<String, dynamic> data, String? token) async {
+    Map<String, dynamic> responseJson;
+
+    try {
+      var body = json.encode(data);
+      Uri uri = Uri.parse(baseUrl + url);
+
+      print("Request URL: $uri");
+      log("Request Body: $body");
+
+      final response = await http
+          .patch(uri,
+              headers: {
+                "Access-Control-Allow-Origin": "*",
+                "Content-Type": "application/json",
+                'Authorization': token != null ? 'Bearer $token' : '',
+                'Accept': '*/*',
+
+              },
+              body: body)
+          .timeout(const Duration(seconds: 120));
+
+      print("Response Status Code: ${response.statusCode}");
+      log("Response Body: ${response.body}");
+
+      if (response.statusCode == 401) {
+        print("Unauthorized");
+        return ApiResponse(Status.ERROR, null, "Unauthorized");
+      }
+
+      responseJson = json.decode(response.body);
+      print("Decoded Response JSON: $responseJson");
+
+      if (responseJson["success"] == true) {
+        return ApiResponse(
+            Status.COMPLETED, responseJson["data"], responseJson["message"]);
+      }
+
+      return ApiResponse(Status.ERROR, null, responseJson["message"]);
+    } on SocketException {
+      print("No Internet Connection");
+      throw FetchDataException('No Internet Connection');
+    } on TimeoutException {
+      print("Request Timeout");
+      throw FetchDataException('Request Timeout');
+    } catch (e) {
+      print("Unexpected Error: $e");
+      throw FetchDataException('Unexpected Error Occurred');
+    }
+  }
+
+@override
+Future<ApiResponse> deleteResponse(
+  String url,
+  String? token,
+) async {
+  try {
+    final Uri uri = Uri.parse(baseUrl + url);
+ 
+    print('================ DELETE REQUEST ================');
+    print('URL: $uri');
+    print('Token exists: ${token != null && token.isNotEmpty}');
+ 
+    final response = await http
+        .delete(
+          uri,
+          headers: {
+            'Accept': '*/*',
+            if (token != null && token.isNotEmpty)
+              'Authorization': 'Bearer $token',
+          },
+        )
+        .timeout(const Duration(seconds: 120));
+ 
+    print('================ DELETE RESPONSE ================');
+    print('Status Code: ${response.statusCode}');
+    print('Reason: ${response.reasonPhrase}');
+    print('Body: ${response.body}');
+    print('=================================================');
+ 
+    if (response.statusCode == 401) {
+      return ApiResponse(
+        Status.ERROR,
+        null,
+        'Unauthorized',
+      );
+    }
+ 
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      // Some DELETE APIs return 204 with no body.
+      if (response.body.isEmpty) {
+        return ApiResponse(
+          Status.COMPLETED,
+          null,
+          'Deleted successfully',
+        );
+      }
+ 
+      final responseJson = jsonDecode(response.body);
+ 
+      if (responseJson is Map<String, dynamic>) {
+        return ApiResponse(
+          Status.COMPLETED,
+          responseJson['data'],
+          responseJson['message'] ?? 'Deleted successfully',
+        );
+      }
+ 
+      return ApiResponse(
+        Status.COMPLETED,
+        null,
+        'Deleted successfully',
+      );
+    }
+ 
+    // Don't throw away the actual server error.
+    print('DELETE FAILED');
+    print('Status: ${response.statusCode}');
+    print('Body: ${response.body}');
+ 
+    return ApiResponse(
+      Status.ERROR,
+      null,
+      response.body.isNotEmpty
+          ? response.body
+          : 'Request failed: ${response.reasonPhrase}',
+    );
+  } on SocketException catch (e) {
+    print('SOCKET EXCEPTION: $e');
+    throw FetchDataException('No Internet Connection');
+  } on TimeoutException catch (e) {
+    print('TIMEOUT EXCEPTION: $e');
+    throw FetchDataException('Request Timeout');
+  } on FormatException catch (e) {
+    print('JSON FORMAT EXCEPTION: $e');
+    throw FetchDataException('Invalid response from server');
+  } catch (e, stackTrace) {
+    print('================ DELETE EXCEPTION ================');
+    print('Error: $e');
+    print('Stack Trace: $stackTrace');
+    print('===================================================');
+ 
+    throw FetchDataException(e.toString());
+  }
+}
 
   // Future<void> uploadProfilePicture({
   //   required String phoneNumber,

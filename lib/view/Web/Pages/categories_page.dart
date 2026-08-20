@@ -7,6 +7,7 @@ import 'package:namnam/view/Web/widgets/reusable_data_table.dart';
 import 'package:provider/provider.dart';
 import 'package:namnam/viewmodel/categories_view_model.dart';
 import 'package:namnam/model/request/create_category_request.dart';
+import 'package:namnam/model/request/edit_category_request.dart';
 import 'package:namnam/model/response/Status.dart';
 import 'package:namnam/model/category.dart';
 import 'package:file_picker/file_picker.dart';
@@ -270,12 +271,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
         icon: Icons.edit,
         color: Appcolors.appPrimaryColor,
         onPressed: (category) {
-          // TODO: Implement edit functionality
-          ToastManager.show(
-            context: context,
-            message: 'Edit ${category.categoryName}',
-            type: ToastType.success,
-          );
+          _showAddCategoryDialog(category: category);
         },
       ),
       TableAction<Category>(
@@ -306,6 +302,14 @@ class _CategoriesPageState extends State<CategoriesPage> {
         },
         isVisible: (category) => (category.status ?? 'inactive') == 'inactive',
       ),
+      TableAction<Category>(
+        label: 'Delete',
+        icon: Icons.delete,
+        color: Colors.red,
+        onPressed: (category) {
+          _showDeleteCategoryDialog(category);
+        },
+      ),
     ];
 
     return ExpandableCategoriesTable(
@@ -322,13 +326,17 @@ class _CategoriesPageState extends State<CategoriesPage> {
     );
   }
 
-  void _showAddCategoryDialog() {
+  void _showAddCategoryDialog({Category? category}) {
+    final bool isEditMode = category != null;
     final formKey = GlobalKey<FormState>();
-    final nameController = TextEditingController();
+    final nameController = TextEditingController(text: category?.categoryName ?? '');
     String? selectedImagePath;
     Uint8List? selectedImageBytes;
-    int? selectedParentId;
-    String selectedStatus = 'active';
+    String? existingImageKey = category?.imageUrl;
+    int? selectedParentId = (category?.parentId == null || category?.parentId == 0)
+        ? null
+        : category!.parentId;
+    String selectedStatus = category?.status ?? 'active';
     List<Category> parentCategories = [];
 
     showDialog(
@@ -343,7 +351,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
                 width: 24,
               ),
               const SizedBox(width: 8),
-              Text('Add New Category'),
+              Text(isEditMode ? 'Edit Category' : 'Add New Category'),
             ],
           ),
           content: SizedBox(
@@ -377,9 +385,12 @@ class _CategoriesPageState extends State<CategoriesPage> {
                       builder: (context, categoriesViewModel, child) {
                         // Load parent categories if not loaded
                         if (parentCategories.isEmpty && categoriesViewModel.categories.isNotEmpty) {
-                          // Filter to get only root categories (parentId is null or 0)
+                          // Filter to get only root categories (parentId is null or 0),
+                          // excluding the category being edited so it can't be its own parent
                           parentCategories = categoriesViewModel.categories
-                              .where((cat) => cat.parentId == null || cat.parentId == 0)
+                              .where((cat) =>
+                                  (cat.parentId == null || cat.parentId == 0) &&
+                                  (category == null || cat.categoryId != category.categoryId))
                               .toList();
                         }
                         
@@ -460,6 +471,7 @@ class _CategoriesPageState extends State<CategoriesPage> {
                               setState(() {
                                 selectedImagePath = file.name;
                                 selectedImageBytes = file.bytes;
+                                existingImageKey = null;
                               });
                               print('Image selected successfully: $selectedImagePath');
                               
@@ -501,6 +513,59 @@ class _CategoriesPageState extends State<CategoriesPage> {
                         ),
                       ),
                     ),
+                    if (selectedImagePath == null && existingImageKey != null && existingImageKey!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Current Image',
+                              style: TextStyle(
+                                color: Colors.grey.shade700,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              width: 100,
+                              height: 100,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.grey.shade300),
+                                image: DecorationImage(
+                                  image: NetworkImage(category!.displayImageUrl),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: TextButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    existingImageKey = null;
+                                  });
+                                },
+                                icon: Icon(Icons.delete, size: 16),
+                                label: Text('Remove Image'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red.shade600,
+                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     if (selectedImagePath != null) ...[
                       const SizedBox(height: 8),
                       Container(
@@ -619,9 +684,9 @@ class _CategoriesPageState extends State<CategoriesPage> {
                   final categoriesViewModel = Provider.of<CategoriesViewModel>(context, listen: false);
                   final uploadViewModel = Provider.of<UploadViewModel>(context, listen: false);
                   
-                  String? imageKey;
-                  
-                  // Upload file if image is selected
+                  String? imageKey = existingImageKey;
+
+                  // Upload file if a new image is selected
                   if (selectedImageBytes != null) {
                     // Create a PlatformFile from the selected bytes
                     final file = PlatformFile(
@@ -629,10 +694,10 @@ class _CategoriesPageState extends State<CategoriesPage> {
                       size: selectedImageBytes!.length,
                       bytes: selectedImageBytes,
                     );
-                    
+
                     // Upload the file and get the image key
                     imageKey = await uploadViewModel.uploadFile(file);
-                    
+
                     if (imageKey == null) {
                       ToastManager.show(
                         context: context,
@@ -642,20 +707,34 @@ class _CategoriesPageState extends State<CategoriesPage> {
                       return;
                     }
                   }
-                  
-                  final request = CreateCategoryRequest(
-                    name: nameController.text.trim(),
-                    parentId: selectedParentId, // Use selected parent ID (null if no parent selected)
-                    imageKey: imageKey, // Use the uploaded image key
-                    status: selectedStatus,
-                  );
 
-                  final success = await categoriesViewModel.createCategory(request);
+                  final bool success;
+                  if (isEditMode) {
+                    final request = EditCategoryRequest(
+                      id: category.categoryId,
+                      name: nameController.text.trim(),
+                      parentId: selectedParentId, // Use selected parent ID (null if no parent selected)
+                      imageKey: imageKey, // Use the uploaded image key, or keep the existing one
+                      status: selectedStatus,
+                    );
+                    success = await categoriesViewModel.editCategory(request);
+                  } else {
+                    final request = CreateCategoryRequest(
+                      name: nameController.text.trim(),
+                      parentId: selectedParentId, // Use selected parent ID (null if no parent selected)
+                      imageKey: imageKey, // Use the uploaded image key
+                      status: selectedStatus,
+                    );
+                    success = await categoriesViewModel.createCategory(request);
+                  }
+
                   if (success && context.mounted) {
                     Navigator.of(context).pop();
                     ToastManager.show(
                       context: context,
-                      message: 'Category created successfully!',
+                      message: isEditMode
+                          ? 'Category updated successfully!'
+                          : 'Category created successfully!',
                       type: ToastType.success,
                     );
                     // Refresh the categories list
@@ -663,19 +742,67 @@ class _CategoriesPageState extends State<CategoriesPage> {
                   } else if (context.mounted) {
                     ToastManager.show(
                       context: context,
-                      message: categoriesViewModel.message.isNotEmpty 
-                          ? categoriesViewModel.message 
-                          : 'Failed to create category',
+                      message: categoriesViewModel.message.isNotEmpty
+                          ? categoriesViewModel.message
+                          : (isEditMode ? 'Failed to update category' : 'Failed to create category'),
                       type: ToastType.error,
                     );
                   }
                 }
               },
-              child: Text('Create Category'),
+              child: Text(isEditMode ? 'Save Changes' : 'Create Category'),
             ),
           ],
         );
       },
     );
   }
-} 
+
+  void _showDeleteCategoryDialog(Category category) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Delete this category?'),
+          content: Text('Are you sure you want to delete "${category.categoryName}"? This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final categoriesViewModel = Provider.of<CategoriesViewModel>(context, listen: false);
+
+                final success = await categoriesViewModel.deleteCategory(category.categoryId);
+                if (success && context.mounted) {
+                  Navigator.of(context).pop();
+                  ToastManager.show(
+                    context: context,
+                    message: 'Category deleted successfully!',
+                    type: ToastType.success,
+                  );
+                  // Refresh the categories list
+                  categoriesViewModel.refreshCategories();
+                } else if (context.mounted) {
+                  ToastManager.show(
+                    context: context,
+                    message: categoriesViewModel.message.isNotEmpty
+                        ? categoriesViewModel.message
+                        : 'Failed to delete category',
+                    type: ToastType.error,
+                  );
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+              ),
+              child: Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
