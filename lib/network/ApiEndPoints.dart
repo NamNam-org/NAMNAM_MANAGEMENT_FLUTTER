@@ -4,7 +4,8 @@ class ApiEndPoints {
   static const String createCategory = "categories";
   static const String updateCategory = "categories/updateCategories";
   static const String uploadPresign = "uploads/presign";
-  static const String Zones = "zones";
+  static const String zones = "zones";
+  static const String updateZone = "zones/updateZones";
   static const String zonesPolygonsMultiple = "zones/polygons/multiple";
   static const String merchants = "merchants";
 

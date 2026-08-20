@@ -2,6 +2,7 @@ import 'package:namnam/model/response/ApiResponse.dart';
 import 'package:namnam/model/response/Status.dart';
 import 'package:namnam/model/zone.dart';
 import 'package:namnam/model/request/create_zone_request.dart';
+import 'package:namnam/model/request/update_zone_request.dart';
 import 'package:namnam/model/request/add_polygons_request.dart';
 import 'package:namnam/model/response/zone_polygons_response.dart';
 import 'package:namnam/network/ApiEndPoints.dart';
@@ -26,7 +27,7 @@ class ZonesServiceImpl implements ZonesService {
       print('ZonesServiceImpl: Request data: ${request.toJson()}');
 
       final response = await _networkApiService.postResponse(
-        ApiEndPoints.Zones,
+        ApiEndPoints.zones,
         request.toJson(),
         accessToken.isNotEmpty ? accessToken : null,
       );
@@ -88,6 +89,81 @@ class ZonesServiceImpl implements ZonesService {
   }
 
   @override
+  Future<ApiResponse<Zone>> updateZone(UpdateZoneRequest request) async {
+    print('ZonesServiceImpl: Starting updateZone request...');
+    try {
+      // Get access token from preferences
+      final prefs = await SharedPreferences.getInstance();
+      final prefProvider = PrefProvider(prefs);
+      final accessToken = prefProvider.getAccessToken();
+
+      print('ZonesServiceImpl: Access token retrieved: ${accessToken.isNotEmpty ? 'Present' : 'Not found'}');
+      print('ZonesServiceImpl: Request data: ${request.toJson()}');
+
+      final response = await _networkApiService.patchResponse(
+        ApiEndPoints.updateZone,
+        request.toJson(),
+        accessToken.isNotEmpty ? accessToken : null,
+      );
+
+      print('ZonesServiceImpl: Network response - Status: ${response.status}, Message: ${response.message}');
+      print('ZonesServiceImpl: Response data: ${response.data}');
+
+      if (response.status == Status.COMPLETED) {
+        if (response.data != null) {
+          print('ZonesServiceImpl: Processing successful response...');
+          final zone = Zone.fromJson(response.data);
+          print('ZonesServiceImpl: Zone updated - ID: ${zone.zoneId}, Name: ${zone.zoneName}');
+          return ApiResponse(
+            Status.COMPLETED,
+            zone,
+            response.message,
+          );
+        } else {
+          // The API returns {success: true} with no "data" payload on
+          // update, so a null body here still means success.
+          print('ZonesServiceImpl: Zone updated successfully (no data payload returned)');
+          final zone = Zone(
+            zoneId: request.id,
+            zoneName: request.zoneName,
+            description: request.zoneDescription,
+            polygons: const [],
+          );
+          return ApiResponse(
+            Status.COMPLETED,
+            zone,
+            response.message,
+          );
+        }
+      } else {
+        print('ZonesServiceImpl: Response status is not COMPLETED');
+
+        // Check if it's an authentication error
+        if (response.message?.toLowerCase().contains('unauthorized') == true) {
+          return ApiResponse(
+            Status.ERROR,
+            null,
+            'Authentication failed. Please log in again.',
+          );
+        }
+
+        return ApiResponse(
+          Status.ERROR,
+          null,
+          response.message ?? 'Failed to update zone',
+        );
+      }
+    } catch (e) {
+      print('ZonesServiceImpl: Exception occurred: $e');
+      return ApiResponse(
+        Status.ERROR,
+        null,
+        'Failed to update zone: $e',
+      );
+    }
+  }
+
+  @override
   Future<ApiResponse<List<Zone>>> getZones() async {
     print('ZonesServiceImpl: Starting getZones request...');
     try {
@@ -99,7 +175,7 @@ class ZonesServiceImpl implements ZonesService {
       print('ZonesServiceImpl: Access token retrieved: ${accessToken.isNotEmpty ? 'Present' : 'Not found'}');
 
       final response = await _networkApiService.fetchData(
-        ApiEndPoints.Zones,
+        ApiEndPoints.zones,
         {}, // Empty query parameters for get all zones
         accessToken.isNotEmpty ? accessToken : null,
       );

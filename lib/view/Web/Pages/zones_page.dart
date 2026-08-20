@@ -447,14 +447,16 @@ class _ZonesPageState extends State<ZonesPage> {
     _updatePolygons();
   }
 
-  void _showCreateZoneDialog() {
+  void _showCreateZoneDialog({Zone? zone}) {
+    final bool isEditMode = zone != null;
+
     setState(() {
       _isDialogOpen = true;
     });
-    
-    final nameController = TextEditingController();
-    final descriptionController = TextEditingController();
-    
+
+    final nameController = TextEditingController(text: zone?.zoneName ?? '');
+    final descriptionController = TextEditingController(text: zone?.description ?? '');
+
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -480,15 +482,15 @@ class _ZonesPageState extends State<ZonesPage> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
-                  Icons.add_location,
+                  isEditMode ? Icons.edit_location_alt : Icons.add_location,
                   color: Appcolors.appPrimaryColor,
                   size: 24,
                 ),
               ),
               const SizedBox(width: 12),
-              const Text(
-                'Create New Zone',
-                style: TextStyle(
+              Text(
+                isEditMode ? 'Edit Zone' : 'Create New Zone',
+                style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
                 ),
@@ -542,7 +544,9 @@ class _ZonesPageState extends State<ZonesPage> {
                     border: Border.all(color: Colors.grey.shade200),
                   ),
                   child: Text(
-                    'After creating the zone, you can select it and add multiple polygons to define the delivery areas.',
+                    isEditMode
+                        ? 'Updating the name and description won\'t affect this zone\'s polygons.'
+                        : 'After creating the zone, you can select it and add multiple polygons to define the delivery areas.',
                     style: TextStyle(
                       fontSize: 14,
                       color: Colors.grey.shade600,
@@ -559,7 +563,7 @@ class _ZonesPageState extends State<ZonesPage> {
                   _isDialogOpen = false;
                 });
                 Navigator.of(context).pop();
-                if (_selectedZone == null) {
+                if (!isEditMode && _selectedZone == null) {
                   _cancelDrawing();
                 }
               },
@@ -574,10 +578,21 @@ class _ZonesPageState extends State<ZonesPage> {
                   setState(() {
                     _isDialogOpen = false;
                   });
-                  _createZone(
-                    nameController.text.trim(),
-                    descriptionController.text.trim().isNotEmpty ? descriptionController.text.trim() : null,
-                  );
+                  if (isEditMode) {
+                    final zoneId = zone.zoneId;
+                    if (zoneId != null) {
+                      _editZone(
+                        zoneId,
+                        nameController.text.trim(),
+                        descriptionController.text.trim(),
+                      );
+                    }
+                  } else {
+                    _createZone(
+                      nameController.text.trim(),
+                      descriptionController.text.trim().isNotEmpty ? descriptionController.text.trim() : null,
+                    );
+                  }
                   Navigator.of(context).pop();
                 }
               },
@@ -588,7 +603,7 @@ class _ZonesPageState extends State<ZonesPage> {
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text('Create Zone'),
+              child: Text(isEditMode ? 'Save Changes' : 'Create Zone'),
             ),
           ],
           ),
@@ -680,7 +695,40 @@ class _ZonesPageState extends State<ZonesPage> {
       );
     }
   }
-  
+
+  Future<void> _editZone(int zoneId, String zoneName, String description) async {
+    final zonesViewModel = Provider.of<ZonesViewModel>(context, listen: false);
+
+    final success = await zonesViewModel.editZone(zoneId, zoneName, description);
+
+    if (!mounted) return;
+
+    if (success) {
+      if (_selectedZone?.zoneId == zoneId) {
+        final updatedZone = zonesViewModel.zones.firstWhere(
+          (z) => z.zoneId == zoneId,
+          orElse: () => _selectedZone!,
+        );
+        setState(() {
+          _selectedZone = updatedZone;
+        });
+        _updatePolygons();
+      }
+
+      ToastManager.show(
+        context: context,
+        message: 'Zone "$zoneName" updated successfully!',
+        type: ToastType.success,
+      );
+    } else {
+      ToastManager.show(
+        context: context,
+        message: zonesViewModel.errorMessage ?? 'Failed to update zone',
+        type: ToastType.error,
+      );
+    }
+  }
+
   void _showDeleteZoneDialog(Zone zone) {
     setState(() {
       _isDialogOpen = true;
@@ -1299,14 +1347,7 @@ class _ZonesPageState extends State<ZonesPage> {
                                     ),
                                   ),
                                   IconButton(
-                                    onPressed: () {
-                                      // TODO: Edit zone
-                                      ToastManager.show(
-                                        context: context,
-                                        message: 'Edit zone: ${zone.zoneName}',
-                                        type: ToastType.success,
-                                      );
-                                    },
+                                    onPressed: () => _showCreateZoneDialog(zone: zone),
                                     icon: Icon(
                                       Icons.edit,
                                       color: Appcolors.appPrimaryColor,

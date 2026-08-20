@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:namnam/model/response/Status.dart';
 import 'package:namnam/model/zone.dart';
 import 'package:namnam/model/request/create_zone_request.dart';
+import 'package:namnam/model/request/update_zone_request.dart';
 import 'package:namnam/model/request/add_polygons_request.dart';
 
 import 'package:namnam/network/services/zones_service.dart';
@@ -104,6 +105,54 @@ class ZonesViewModel extends ChangeNotifier {
       return false;
     } finally {
       _setCreatingZone(false);
+    }
+  }
+
+  Future<bool> editZone(int zoneId, String zoneName, String zoneDescription) async {
+    print('ZonesViewModel: Starting editZone - ZoneId: $zoneId, Name: $zoneName, Description: $zoneDescription');
+    _setError(null);
+
+    try {
+      final request = UpdateZoneRequest(
+        id: zoneId,
+        zoneName: zoneName,
+        zoneDescription: zoneDescription,
+      );
+
+      final response = await _zonesService.updateZone(request);
+      print('ZonesViewModel: editZone response - Status: ${response.status}');
+
+      if (response.status == Status.COMPLETED) {
+        print('ZonesViewModel: Zone updated successfully - ID: $zoneId');
+        _setError(null);
+
+        // Apply the change to the local zone using the zoneId we already
+        // hold: the update response doesn't reliably carry it back (its
+        // payload keys the zone as "id"), so matching on the response's
+        // zoneId would silently find nothing. copyWith keeps the zone's
+        // polygons, createdAt and status intact.
+        final existingIndex = _zones.indexWhere((zone) => zone.zoneId == zoneId);
+        if (existingIndex != -1) {
+          updateZone(
+            _zones[existingIndex].copyWith(
+              zoneName: zoneName,
+              description: zoneDescription,
+            ),
+          );
+        }
+
+        return true;
+      } else {
+        final errorMsg = response.message ?? 'Failed to update zone';
+        print('ZonesViewModel: editZone failed - Error: $errorMsg');
+        _setError(errorMsg);
+        return false;
+      }
+    } catch (e) {
+      final errorMsg = 'Error updating zone: $e';
+      print('ZonesViewModel: editZone exception - $errorMsg');
+      _setError(errorMsg);
+      return false;
     }
   }
 
