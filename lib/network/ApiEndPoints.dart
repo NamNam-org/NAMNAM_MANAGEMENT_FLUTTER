@@ -4,7 +4,7 @@ class ApiEndPoints {
   static const String createCategory = "categories";
   static const String updateCategory = "categories/updateCategories";
   static const String uploadPresign = "uploads/presign";
-  static const String zones = "zones";
+  static const String Zones = "zones";
   static const String zonesPolygonsMultiple = "zones/polygons/multiple";
   static const String merchants = "merchants";
 
@@ -13,4 +13,7 @@ class ApiEndPoints {
 
   // Dynamic endpoint for deleting a category: categories/{categoryId}
   static String deleteCategory(int categoryId) => "categories/$categoryId";
+
+  // Dynamic endpoint for deleting a zone: zones/{zoneId}
+  static String deleteZone(int zoneId) => "zones/$zoneId";
 }

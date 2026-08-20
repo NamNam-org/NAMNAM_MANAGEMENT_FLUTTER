@@ -681,6 +681,96 @@ class _ZonesPageState extends State<ZonesPage> {
     }
   }
   
+  void _showDeleteZoneDialog(Zone zone) {
+    setState(() {
+      _isDialogOpen = true;
+    });
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (BuildContext context) {
+        return PopScope(
+          onPopInvoked: (didPop) {
+            if (didPop) {
+              setState(() {
+                _isDialogOpen = false;
+              });
+            }
+          },
+          child: AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text('Delete this zone?'),
+            content: Text(
+              'Are you sure you want to delete "${zone.zoneName}"? This action cannot be undone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _isDialogOpen = false;
+                  });
+                  Navigator.of(context).pop();
+                },
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    _isDialogOpen = false;
+                  });
+                  Navigator.of(context).pop();
+                  _deleteZone(zone);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+                child: const Text('Delete'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteZone(Zone zone) async {
+    if (zone.zoneId == null) return;
+
+    final zonesViewModel = Provider.of<ZonesViewModel>(context, listen: false);
+
+    final success = await zonesViewModel.deleteZone(zone.zoneId!);
+
+    if (!mounted) return;
+
+    if (success) {
+      if (_selectedZone?.zoneId == zone.zoneId) {
+        setState(() {
+          _selectedZone = null;
+        });
+        _updatePolygons();
+      }
+
+      ToastManager.show(
+        context: context,
+        message: 'Zone "${zone.zoneName}" deleted successfully!',
+        type: ToastType.success,
+      );
+    } else {
+      ToastManager.show(
+        context: context,
+        message: zonesViewModel.errorMessage ?? 'Failed to delete zone',
+        type: ToastType.error,
+      );
+    }
+  }
+
   Future<void> _addPolygonToZone() async {
     if (_selectedZone == null || _currentPolygonPoints.isEmpty) return;
     
@@ -1223,14 +1313,7 @@ class _ZonesPageState extends State<ZonesPage> {
                                     ),
                                   ),
                                   IconButton(
-                                    onPressed: () {
-                                      // TODO: Delete zone
-                                      ToastManager.show(
-                                        context: context,
-                                        message: 'Delete zone: ${zone.zoneName}',
-                                        type: ToastType.error,
-                                      );
-                                    },
+                                    onPressed: () => _showDeleteZoneDialog(zone),
                                     icon: Icon(
                                       Icons.delete,
                                       color: Colors.red,

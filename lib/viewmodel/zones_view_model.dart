@@ -85,11 +85,11 @@ class ZonesViewModel extends ChangeNotifier {
       print('ZonesViewModel: createZone response - Status: ${response.status}');
 
       if (response.status == Status.COMPLETED && response.data != null) {
-        // Add the new zone to the list
-        _zones.add(response.data!);
         print('ZonesViewModel: Zone created successfully - ID: ${response.data!.zoneId}');
         _setError(null);
-        notifyListeners();
+        // Refresh from the server so the list reflects the authoritative
+        // zone (real zoneId, timestamps, etc.) rather than guessing it.
+        await fetchZones();
         return true;
       } else {
         final errorMsg = response.message ?? 'Failed to create zone';
@@ -173,6 +173,33 @@ class ZonesViewModel extends ChangeNotifier {
     } catch (e) {
       final errorMsg = 'Error adding polygons to zone: $e';
       print('ZonesViewModel: addPolygonsToZone exception - $errorMsg');
+      _setError(errorMsg);
+      return false;
+    }
+  }
+
+  Future<bool> deleteZone(int zoneId) async {
+    print('ZonesViewModel: Starting deleteZone - ZoneId: $zoneId');
+    _setError(null);
+
+    try {
+      final response = await _zonesService.deleteZone(zoneId);
+      print('ZonesViewModel: deleteZone response - Status: ${response.status}');
+
+      if (response.status == Status.COMPLETED) {
+        print('ZonesViewModel: Zone deleted successfully - ID: $zoneId');
+        removeZone(zoneId);
+        _setError(null);
+        return true;
+      } else {
+        final errorMsg = response.message ?? 'Failed to delete zone';
+        print('ZonesViewModel: deleteZone failed - Error: $errorMsg');
+        _setError(errorMsg);
+        return false;
+      }
+    } catch (e) {
+      final errorMsg = 'Error deleting zone: $e';
+      print('ZonesViewModel: deleteZone exception - $errorMsg');
       _setError(errorMsg);
       return false;
     }

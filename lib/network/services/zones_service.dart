@@ -9,4 +9,5 @@ abstract class ZonesService {
   Future<ApiResponse<List<Zone>>> getZones();
   Future<ApiResponse<bool>> addPolygonsToZone(AddPolygonsRequest request);
   Future<ApiResponse<ZonePolygonsResponse>> getZonePolygons(int zoneId);
+  Future<ApiResponse<bool>> deleteZone(int zoneId);
 }

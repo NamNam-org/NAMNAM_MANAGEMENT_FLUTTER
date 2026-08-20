@@ -26,7 +26,7 @@ class ZonesServiceImpl implements ZonesService {
       print('ZonesServiceImpl: Request data: ${request.toJson()}');
 
       final response = await _networkApiService.postResponse(
-        ApiEndPoints.zones,
+        ApiEndPoints.Zones,
         request.toJson(),
         accessToken.isNotEmpty ? accessToken : null,
       );
@@ -45,11 +45,18 @@ class ZonesServiceImpl implements ZonesService {
             response.message,
           );
         } else {
-          print('ZonesServiceImpl: Response data is null');
+          // The API returns {success: true} with no "data" payload on
+          // creation, so a null body here still means success.
+          print('ZonesServiceImpl: Zone created successfully (no data payload returned)');
+          final zone = Zone(
+            zoneName: request.zoneName,
+            description: request.zoneDescription,
+            polygons: const [],
+          );
           return ApiResponse(
-            Status.ERROR,
-            null,
-            'No zone data received',
+            Status.COMPLETED,
+            zone,
+            response.message,
           );
         }
       } else {
@@ -92,7 +99,7 @@ class ZonesServiceImpl implements ZonesService {
       print('ZonesServiceImpl: Access token retrieved: ${accessToken.isNotEmpty ? 'Present' : 'Not found'}');
 
       final response = await _networkApiService.fetchData(
-        ApiEndPoints.zones,
+        ApiEndPoints.Zones,
         {}, // Empty query parameters for get all zones
         accessToken.isNotEmpty ? accessToken : null,
       );
@@ -272,6 +279,59 @@ class ZonesServiceImpl implements ZonesService {
         Status.ERROR,
         null,
         'Failed to get zone polygons: $e',
+      );
+    }
+  }
+
+  @override
+  Future<ApiResponse<bool>> deleteZone(int zoneId) async {
+    print('ZonesServiceImpl: Starting deleteZone request for zone $zoneId...');
+    try {
+      // Get access token from preferences
+      final prefs = await SharedPreferences.getInstance();
+      final prefProvider = PrefProvider(prefs);
+      final accessToken = prefProvider.getAccessToken();
+
+      print('ZonesServiceImpl: Access token retrieved: ${accessToken.isNotEmpty ? 'Present' : 'Not found'}');
+
+      final response = await _networkApiService.deleteResponse(
+        ApiEndPoints.deleteZone(zoneId),
+        accessToken.isNotEmpty ? accessToken : null,
+      );
+
+      print('ZonesServiceImpl: Network response - Status: ${response.status}, Message: ${response.message}');
+
+      if (response.status == Status.COMPLETED) {
+        print('ZonesServiceImpl: Zone deleted successfully - ID: $zoneId');
+        return ApiResponse(
+          Status.COMPLETED,
+          true,
+          response.message,
+        );
+      } else {
+        print('ZonesServiceImpl: Response status is not COMPLETED');
+
+        // Check if it's an authentication error
+        if (response.message?.toLowerCase().contains('unauthorized') == true) {
+          return ApiResponse(
+            Status.ERROR,
+            null,
+            'Authentication failed. Please log in again.',
+          );
+        }
+
+        return ApiResponse(
+          Status.ERROR,
+          null,
+          response.message ?? 'Failed to delete zone',
+        );
+      }
+    } catch (e) {
+      print('ZonesServiceImpl: Exception occurred: $e');
+      return ApiResponse(
+        Status.ERROR,
+        null,
+        'Failed to delete zone: $e',
       );
     }
   }
