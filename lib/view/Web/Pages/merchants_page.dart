@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:namnam/core/Utility/appcolors.dart';
+import 'package:namnam/view/Web/Widgets/merchant_requests_dialog.dart';
+import 'package:namnam/view/Web/Widgets/proceedBtn.dart';
 import 'package:namnam/viewmodel/merchants_view_model.dart';
 import 'package:provider/provider.dart';
 
@@ -126,24 +128,38 @@ class _MerchantsPageState extends State<MerchantsPage> {
                         ),
                       ],
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Appcolors.appPrimaryColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Appcolors.appPrimaryColor.withOpacity(0.2),
-                          width: 1,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Appcolors.appPrimaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Appcolors.appPrimaryColor.withOpacity(0.2),
+                              width: 1,
+                            ),
+                          ),
+                          child: Text(
+                            '${vm.totalMerchants} Total',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Appcolors.appPrimaryColor,
+                            ),
+                          ),
                         ),
-                      ),
-                      child: Text(
-                        '${vm.totalMerchants} Total',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                        const SizedBox(width: 16),
+                        ProceedBtn(
+                          text: 'Requests',
                           color: Appcolors.appPrimaryColor,
+                          onPressed: () => MerchantRequestsDialog.show(context),
+                          borderRadius: 12,
+                          height: 44,
+                          width: 140,
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),

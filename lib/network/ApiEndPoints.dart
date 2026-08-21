@@ -8,6 +8,7 @@ class ApiEndPoints {
   static const String updateZone = "zones/updateZones";
   static const String zonesPolygonsMultiple = "zones/polygons/multiple";
   static const String merchants = "merchants";
+  static const String merchantRequests = "merchants/merchant-requests";
 
   // Dynamic endpoint for getting zone polygons: zones/{zoneId}/polygons
   static String getZonePolygons(int zoneId) => "zones/$zoneId/polygons";
@@ -17,4 +18,7 @@ class ApiEndPoints {
 
   // Dynamic endpoint for deleting a zone: zones/{zoneId}
   static String deleteZone(int zoneId) => "zones/$zoneId";
+
+  // Dynamic endpoint for approving/rejecting a merchant request: merchants/{merchantId}/status
+  static String updateMerchantStatus(int merchantId) => "merchants/$merchantId/status";
 }
